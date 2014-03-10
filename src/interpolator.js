@@ -93,8 +93,11 @@ var ko = require('../bower_components/knockout.js/knockout.debug');
 
           function addExpr(expressionText) {
             if (expressionText) {
+              expressionText = expressionText.split('|');
+              expressionText[0] = expressionText[0] + ' | unwrap';
+              expressionText = expressionText.join('|');
               bindingValue = filterPreprocessor(expressionText);
-              parts.push('ko.unwrap(' + bindingValue + ')');
+              parts.push(bindingValue);
             }
           }
 
@@ -159,19 +162,29 @@ var ko = require('../bower_components/knockout.js/knockout.debug');
     }
   }
 
-  function processTree(holder) {
-    interpolator.process(holder);
+  function compileTree(holder) {
+    compileSingle(holder);
 
     if (holder && holder.nodeType === 1) {
       var children = ko.virtualElements.childNodes(holder);
 
       if (children.length > 0) {
         forEachNodeInContinuousRange(children[0], children[children.length - 1], function (node, nextNode) {
-          processTree(node);
+          compileTree(node);
         });
       }
 
       return holder.innerHTML;
+    }
+  }
+
+  function compileSingle(node) {
+    if (node.nodeType === 3 && node.nodeValue && node.nodeValue.indexOf('{{') !== -1) {
+      interpolationMarkupPreprocessor(node);
+    }
+
+    if (node.nodeType === 1 && node.attributes.length) {
+      attributeBindingPreprocessor(node);
     }
   }
 
@@ -221,22 +234,12 @@ var ko = require('../bower_components/knockout.js/knockout.debug');
       return name;
     },
 
-    process: function (node) {
-      if (node.nodeType === 3 && node.nodeValue && node.nodeValue.indexOf('{{') !== -1) {
-        interpolationMarkupPreprocessor(node);
-      }
-
-      if (node.nodeType === 1 && node.attributes.length) {
-        attributeBindingPreprocessor(node);
-      }
-    },
-
-    processHTML: function (html) {
+    compile: function (html) {
       var holder = interpolator.document.createElement('div');
 
       holder.innerHTML = html;
       sections = [];
-      var html = processTree(holder);
+      var html = compileTree(holder);
 
       if (sections.length !== 0) {
         throw new Error("Unclosed section: " + sections.pop());
@@ -258,7 +261,7 @@ var ko = require('../bower_components/knockout.js/knockout.debug');
     },
 
     foreach: function (bindingValue) {
-      var parts = bindingValue.split(/\s+as\s+/);
+      var parts = bindingValue.split(/\s+in\s+/);
 
       return parts.length > 1 ? '{ data: ' + parts[0] + ', as: \'' + parts[1].trim() + '\' }' : bindingValue;
     },
