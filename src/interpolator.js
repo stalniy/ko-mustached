@@ -251,7 +251,7 @@ var ko = require('../bower_components/knockout.js/knockout.debug');
 
   interpolator.bindingSyntax = {
     value: function (bindingValue) {
-      var matching = bindingValue.match(/of\s*: ([^,]+), update: (.+)/);
+      var matching = bindingValue.match(/of\s*:([^,]+),\s*update\s*:(.+)/);
 
       if (matching) {
         bindingValue = [ matching[1], ', valueUpdate:', matching[2] ].join('');
@@ -263,7 +263,7 @@ var ko = require('../bower_components/knockout.js/knockout.debug');
     foreach: function (bindingValue) {
       var parts = bindingValue.split(/\s+in\s+/);
 
-      return parts.length > 1 ? '{ data: ' + parts[0] + ', as: \'' + parts[1].trim() + '\' }' : bindingValue;
+      return parts.length > 1 ? '{ data: ' + parts[1] + ', as: \'' + parts[0].trim() + '\' }' : bindingValue;
     },
 
     'default': function (bindingValue) {

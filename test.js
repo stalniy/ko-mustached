@@ -10,7 +10,7 @@ interpolator.document = dom().parentWindow.document;
 
 var html = interpolator.compile([
   '<div if="hasTemplates()">',
-    '{{ foreach: templates in template }}',
+    '{{ foreach: template in templates }}',
       '<a href="#" data-id="id-{{ id | $t | camelize }}">{{ name | upper | dosomething }}</a>',
       '<input value="of: title, update: \'afterkeydown\'" css="active: isActive, disabled: isLocked" scope="name: bla, template: \'template\'" />',
     '{{ /end }}',
