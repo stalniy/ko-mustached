@@ -22,7 +22,7 @@ var ko = require('../bower_components/knockout.js/knockout.debug');
     },
 
     'default': function (bindingValue) {
-      return  /^\w+\s*:/.test(bindingValue) ? '{' + bindingValue + '}' : bindingValue;
+      return  /^\s*\w+\s*:/.test(bindingValue) ? '{' + bindingValue + '}' : bindingValue;
     }
   };
 
