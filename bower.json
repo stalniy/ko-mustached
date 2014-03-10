@@ -1,0 +1,14 @@
+{
+  "name": "kis",
+  "version": "0.0.1",
+  "main": "build/kis.min.js",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "spec"
+  ],
+  "dependencies": {
+    "knockout.js": ">= 2.1.0"
+  }
+}
