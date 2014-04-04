@@ -1,18 +1,12 @@
-var ko = require('../bower_components/knockout.js/knockout.debug');
-
-(function (ko, context) {
+(function (context) {
   var dataBind = 'data-bind';
-  var sections;
-  var document = context.document;
+  var sections, document, bindingHandlers, virtualBindings;
+  var tags = { open: '{{', close: '}}' };
   var bindingSyntax = {
     value: function (bindingValue) {
-      var matching = bindingValue.match(/of\s*:([^,]+),\s*update\s*:(.+)/);
+      var parts = bindingValue.split(/,\s*update\s*:/);
 
-      if (matching) {
-        bindingValue = [ matching[1], ', valueUpdate:', matching[2] ].join('');
-      }
-
-      return bindingValue;
+      return parts.join(', valueUpdate: ');
     },
 
     foreach: function (bindingValue) {
@@ -22,10 +16,13 @@ var ko = require('../bower_components/knockout.js/knockout.debug');
     },
 
     'default': function (bindingValue) {
-      return  /^\s*\w+\s*:/.test(bindingValue) ? '{' + bindingValue + '}' : bindingValue;
+      return  isObjectDeclaration(bindingValue) ? '{' + bindingValue + '}' : bindingValue;
     }
   };
 
+  function isObjectDeclaration(string) {
+    return /^\s*\w+\s*:/.test(string);
+  }
 
   function compileTree(element) {
     var nextInQueue = element.firstChild, childElement = nextInQueue;
@@ -41,7 +38,7 @@ var ko = require('../bower_components/knockout.js/knockout.debug');
   }
 
   function compileSingle(element) {
-    if (element.nodeType === 3 && element.nodeValue && element.nodeValue.indexOf('{{') !== -1) {
+    if (element.nodeType === 3 && element.nodeValue) {
       parseInterpolationMarkupIn(element);
     }
 
@@ -51,98 +48,98 @@ var ko = require('../bower_components/knockout.js/knockout.debug');
   }
 
   function parseInterpolationMarkupIn(element) {
-    var elements = [];
+    var elements = parseInterpolationMarkup(element.nodeValue, compileExpresssion, compileText);
 
-    parseInterpolationMarkup(element.nodeValue, function (text) {
-      if (text) {
-        elements.push(document.createTextNode(text));
+    if (element.parentNode && (elements.length > 1 || elements[0] !== element)) {
+      for (var i = 0; i < elements.length; i++) {
+        element.parentNode.insertBefore(elements[i], element);
       }
-    }, function (expressionText) {
-      if (expressionText) {
-        elements.push.apply(elements, compileExpresssion(expressionText));
-      }
-    });
-
-    if (elements.length > 1 || elements[0] !== element) {
-      if (element.parentNode) {
-        for (var i = 0; i < elements.length; i++) {
-          element.parentNode.insertBefore(elements[i], element);
-        }
-        element.parentNode.removeChild(element);
-      }
-      return elements;
+      element.parentNode.removeChild(element);
     }
   }
 
+  function parseInterpolationMarkup(text, compileExpression, compileText) {
+    var startIndex, endIndex, index = 0, length = text.length, expr;
+    var parts = [];
 
-  function parseInterpolationMarkup(textToParse, outerTextCallback, expressionCallback) {
-    var innerParse = function (text) {
-      var innerMatch = text.match(/^([\s\S]*?)}}([\s\S]*)\{\{([\s\S]*)$/);
-      if (innerMatch) {
-        expressionCallback(innerMatch[1]);
-        outerParse(innerMatch[2]);
-        expressionCallback(innerMatch[3]);
+    while (index < length) {
+      startIndex = text.indexOf(tags.open, index);
+      endIndex = text.indexOf(tags.close, startIndex + tags.open.length);
+
+      if (startIndex !== -1 && endIndex !== -1) {
+        if (index !== startIndex) {
+          parts.push(compileText(text.substring(index, startIndex)));
+        }
+        expr = text.substring(startIndex + tags.open.length, endIndex);
+        parts = parts.concat(compileExpression(expr));
+        index = endIndex + tags.close.length;
       } else {
-        expressionCallback(text);
-      }
-    };
+        if (index !== length) {
+          parts.push(compileText(text.substring(index)));
+        }
 
-    var outerParse = function (text) {
-      var outerMatch = text.match(/^([\s\S]*?)\{\{([\s\S]*)}}([\s\S]*)$/);
-      if (outerMatch) {
-        outerTextCallback(outerMatch[1]);
-        innerParse(outerMatch[2]);
-        outerTextCallback(outerMatch[3]);
-      } else {
-        outerTextCallback(text);
+        index = length;
       }
-    };
+    }
 
-    outerParse(textToParse);
+    return parts;
   }
 
   function compileExpresssion(expressionText) {
-    var matching = expressionText.match(/^\s*(\w+):(.+)/);
+    var matching = expressionText.match(/^\s*(\w+)\s*:(.+)/);
     var possibleBindingName = matching && matching[1];
     var compiledElements = [];
 
-    if (possibleBindingName && ko.bindingHandlers[possibleBindingName]) {
-      var convert = bindingSyntax[possibleBindingName] || bindingSyntax['default'];
-
-      if (!ko.virtualElements.allowedBindings[possibleBindingName]) {
-        throw new Error("The binding '" + possibleBindingName + "' cannot be used with virtual elements.");
-      }
+    if (possibleBindingName && bindingHandlers[possibleBindingName]) {
+      var binding = buildBinding(possibleBindingName, matching[2]);
 
       sections.push(expressionText);
-      expressionText = convert(matching[2]);
-      compiledElements.push(document.createComment("ko " + possibleBindingName + ":" + expressionText));
+      compiledElements.push(document.createComment("ko " + binding.name + ":" + binding.value));
     } else if (expressionText.trim() === '/end' && sections.length > 0) {
       sections.pop();
       compiledElements.push(document.createComment("/ko"));
     } else {
       compiledElements.push(
-        document.createComment("ko text:" + compileFilters(expressionText)),
+        document.createComment("ko text:" + compileFilters(expressionText).trim()),
         document.createComment("/ko")
       );
     }
 
     return compiledElements;
-  };
+  }
+
+  function compileText(text) {
+    return document.createTextNode(text);
+  }
+
+  function buildBinding(name, valueExpr) {
+    var convert = bindingSyntax[name] || bindingSyntax['default'];
+    var result = convert(valueExpr);
+    var binding = { name: name, value: '' };
+
+    if (typeof result === 'string') {
+      binding.value = result;
+    } else if (typeof result === 'object') {
+      binding.name = result.name;
+      binding.value = result.value;
+    }
+
+    binding.value = binding.value.trim();
+
+    return binding;
+  }
 
   function parseInterpolationInAttributesOf(node) {
     var parts, bindingValue;
-    var addExpr = function (expressionText) {
-      if (expressionText) {
-        expressionText = expressionText.split('|');
-        expressionText[0] = expressionText[0] + ' | unwrap';
-        expressionText = expressionText.join('|');
-        parts.push(compileFilters(expressionText));
-      }
+    var compileExpresssion = function (expressionText) {
+      expressionText = expressionText.split('|');
+      expressionText[0] = expressionText[0] + ' | u';
+      expressionText = expressionText.join('|');
+
+      return compileFilters(expressionText);
     };
-    var addText = function (text) {
-      if (text) {
-        parts.push("'" + text.replace(/"/g, "\\'") + "'");
-      }
+    var compileText = function (text) {
+      return "'" + text.replace(/"/g, "\\'") + "'";
     };
 
     for (var attrs = node.attributes, i = attrs.length - 1; i >= 0; --i) {
@@ -150,13 +147,11 @@ var ko = require('../bower_components/knockout.js/knockout.debug');
 
       bindingValue = '';
       if (attr.specified && attr.name != dataBind && attr.value) {
-        if (attr.value.indexOf('{{') !== -1) {
-          parts = [];
-          parseInterpolationMarkup(attr.value, addText, addExpr);
-
+        if (attr.value.indexOf(tags.open) !== -1 && attr.value.indexOf(tags.close) !== -1) {
+          parts = parseInterpolationMarkup(attr.value, compileExpresssion, compileText);
           bindingValue = parts.join('+');
-        } else if (ko.bindingHandlers[attr.name]) {
-          bindingValue = attr.value;
+        } else if (bindingHandlers[attr.name]) {
+          bindingValue = isObjectDeclaration(attr.value) ? attr.value : compileFilters(attr.value);
         }
 
         if (bindingValue) {
@@ -169,20 +164,19 @@ var ko = require('../bower_components/knockout.js/knockout.debug');
 
   function applyBindingTo(element, binding) {
     var dataBindAttribute = element.getAttribute(dataBind);
-    var convert = bindingSyntax[binding.name] || bindingSyntax['default'];
     var attrBindingPosition = null;
-    var bindingExpr;
 
-    binding.value = convert(binding.value);
-    bindingExpr = "'" + binding.name + "':" + binding.value;
+    binding = buildBinding(binding.name, binding.value);
 
-    if (!ko.bindingHandlers[binding.name]) {
+    var bindingExpr = "'" + binding.name + "':" + binding.value;
+
+    if (!bindingHandlers[binding.name]) {
       attrBindingPosition = dataBindAttribute ? dataBindAttribute.search(/attr\s*:\s*\{/) : -1;
 
       if (attrBindingPosition === -1) {
-        bindingExpr = "attr: { " + bindingExpr + " }";
+        bindingExpr = 'attr:{' + bindingExpr + '}';
       } else {
-        attrBindingPosition += RegExp.lastMatch.length
+        attrBindingPosition += RegExp.lastMatch.length;
         dataBindAttribute = [
           dataBindAttribute.substr(0, attrBindingPosition),
           bindingExpr, ',',
@@ -225,7 +219,7 @@ var ko = require('../bower_components/knockout.js/knockout.debug');
           inFilters = true;
         } else {
           if (nextIsFilter) {
-            input = context.interpolator.compileTextFilter(token) + "(" + input;
+            input = compileTextFilter(token) + "(" + input;
           } else if (inFilters && token === ':') {
             if (lastToken === ':') {
               input += "undefined";
@@ -242,31 +236,52 @@ var ko = require('../bower_components/knockout.js/knockout.debug');
     return input;
   }
 
+  var compileTextFilter = function (filterName) {
+    return filterName;
+  }
+
   context.interpolator = {
     bindingSyntax: bindingSyntax,
 
-    setDocument: function (doc) {
-      document = doc;
-    },
+    configure: function (options) {
+      document = options.document;
+      bindingHandlers = options.bindings;
 
-    compileTextFilter: function (filterName) {
-      return filterName;
+      if (options.compileFilter) {
+        compileTextFilter = options.compileFilter;
+      }
+
+      return this;
     },
 
     compile: function (html) {
-      var element = document.createElement('div');
+      if (!document || !bindingHandlers || !compileTextFilter) {
+        throw new Error([
+          'Unable to compile html because of ',
+          'one or more empty options "document", "bindingHandlers" or "compileFilter".'
+        ].join(''));
+      }
 
-      element.innerHTML = html;
       sections = [];
-      var html = compileTree(element);
+      var holder = document.createElement('div');
+
+      if (typeof html === 'string') {
+        holder.innerHTML = html;
+      } else if (html && html.nodeType) {
+        holder.appendChild(html);
+      } else {
+        throw new Error('Unable to parse specified hmtl: ' + html);
+      }
+
+      html = compileTree(holder);
 
       if (sections.length !== 0) {
         throw new Error("Unclosed section: " + sections.pop());
       }
 
-      element.innerHTML = '';
+      holder.innerHTML = '';
 
       return html;
     }
   };
-})(ko, module.exports);
+})(this);
