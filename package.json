@@ -1,6 +1,6 @@
 {
-  "name": "tkt",
-  "version": "0.0.1",
+  "name": "Knockout mustached interpolator",
+  "version": "0.0.2",
   "description": "Knockout interpolation syntax",
   "scripts": {
     "test": "grunt test"
@@ -12,7 +12,9 @@
   "keywords": [
     "knockout",
     "tools",
-    "bindings"
+    "bindings",
+    "interpolation",
+    "syntax"
   ],
   "author": "Sergiy Stotskiy",
   "license": "MIT",
@@ -23,7 +25,6 @@
   "devDependencies": {
     "grunt": "~0.4.1",
     "grunt-contrib-jasmine": "~0.5.1",
-    "grunt-contrib-concat": "~0.3.0",
     "grunt-contrib-uglify": "~0.2.4",
     "grunt-bower-task": "~0.3.2",
     "jsdom": "~0.8.11"

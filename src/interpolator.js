@@ -1,4 +1,15 @@
-(function (context) {
+(function (factory) {
+  //CommonJS
+  if (typeof require === "function" && typeof exports === "object" && typeof module === "object") {
+    factory(module.exports);
+  //AMD
+  } else if (typeof define === "function" && define.amd) {
+    define(["exports"], factory);
+  //normal script tag
+  } else {
+    factory(window);
+  }
+})(function (context) {
   var dataBind = 'data-bind';
   var sections, document, bindingHandlers, virtualBindings;
   var tags = { open: '{{', close: '}}' };
@@ -336,4 +347,4 @@
       return html;
     }
   };
-})(this);
+});
