@@ -3,16 +3,34 @@
   var sections, document, bindingHandlers, virtualBindings;
   var tags = { open: '{{', close: '}}' };
   var bindingSyntax = {
-    value: function (bindingValue) {
-      var parts = bindingValue.split(/,\s*update\s*:/);
+    template: {
+      autoClose: true
+    },
 
-      return parts.join(', valueUpdate: ');
+    partial: {
+      autoClose: true,
+
+      as: 'template',
+
+      compile: function (bindingValue) {
+        var parts = bindingValue.match(/^([^,]+)\s*,\s*(.*)$/);
+
+        if (!parts) {
+          throw new Error('Unable to compile "partial" binding: ' + bindingValue);
+        }
+
+        if (parts[2]) {
+          bindingValue = [ '{name:', parts[1].trim(), ',data:{', parts[2].trim(), '}}' ].join('');
+        }
+
+        return bindingValue;
+      }
     },
 
     foreach: function (bindingValue) {
       var parts = bindingValue.split(/\s+in\s+/);
 
-      return parts.length > 1 ? [ '{ data: ', parts[1], ', as: \'', parts[0].trim(), '\' }' ].join('') : bindingValue;
+      return parts.length > 1 ? [ '{data:', parts[1], ',as:\'', parts[0].trim(), '\'}' ].join('') : bindingValue;
     },
 
     'default': function (bindingValue) {
@@ -22,6 +40,12 @@
 
   function isObjectDeclaration(string) {
     return /^\s*\w+\s*:/.test(string);
+  }
+
+  function camelize(word) {
+    return word.replace(/[_.-]([a-z])/gi, function (match, pocket) {
+      return pocket.toUpperCase();
+    });
   }
 
   function compileTree(element) {
@@ -48,7 +72,7 @@
   }
 
   function parseInterpolationMarkupIn(element) {
-    var elements = parseInterpolationMarkup(element.nodeValue, compileExpresssion, compileText);
+    var elements = parseInterpolationMarkup(element.nodeValue, compileExpresssion, compileTextNode);
 
     if (element.parentNode && (elements.length > 1 || elements[0] !== element)) {
       for (var i = 0; i < elements.length; i++) {
@@ -90,11 +114,16 @@
     var possibleBindingName = matching && matching[1];
     var compiledElements = [];
 
-    if (possibleBindingName && bindingHandlers[possibleBindingName]) {
+    if (possibleBindingName && (bindingHandlers[possibleBindingName] || bindingSyntax[possibleBindingName])) {
       var binding = buildBinding(possibleBindingName, matching[2]);
 
-      sections.push(expressionText);
       compiledElements.push(document.createComment("ko " + binding.name + ":" + binding.value));
+
+      if (binding.autoClose) {
+        compiledElements.push(document.createComment("/ko"));
+      } else {
+        sections.push(expressionText);
+      }
     } else if (expressionText.trim() === '/end' && sections.length > 0) {
       sections.pop();
       compiledElements.push(document.createComment("/ko"));
@@ -108,14 +137,34 @@
     return compiledElements;
   }
 
-  function compileText(text) {
+  function compileTextNode(text) {
     return document.createTextNode(text);
   }
 
+  function compileString(text) {
+    return "'" + text.replace(/"/g, "\\'") + "'";
+  }
+
   function buildBinding(name, valueExpr) {
-    var convert = bindingSyntax[name] || bindingSyntax['default'];
-    var result = convert(valueExpr);
+    var compile = bindingSyntax['default'];
     var binding = { name: name, value: '' };
+    var syntax = bindingSyntax[name];
+
+    if (typeof syntax === 'function') {
+      compile = syntax;
+    } else if (typeof syntax === 'object' && syntax) {
+      binding.autoClose = syntax.autoClose;
+
+      if (syntax.compile) {
+        compile = syntax.compile;
+      }
+
+      if (syntax.as) {
+        binding.name = syntax.as;
+      }
+    }
+
+    var result = compile(valueExpr);
 
     if (typeof result === 'string') {
       binding.value = result;
@@ -130,7 +179,7 @@
   }
 
   function parseInterpolationInAttributesOf(node) {
-    var parts, bindingValue;
+    var parts, bindingValue, bindingName;
     var compileExpresssion = function (expressionText) {
       expressionText = expressionText.split('|');
       expressionText[0] = expressionText[0] + ' | u';
@@ -138,24 +187,23 @@
 
       return compileFilters(expressionText);
     };
-    var compileText = function (text) {
-      return "'" + text.replace(/"/g, "\\'") + "'";
-    };
 
     for (var attrs = node.attributes, i = attrs.length - 1; i >= 0; --i) {
       var attr = attrs[i];
 
-      bindingValue = '';
       if (attr.specified && attr.name != dataBind && attr.value) {
+        bindingValue = '';
+        bindingName = camelize(attr.name);
+
         if (attr.value.indexOf(tags.open) !== -1 && attr.value.indexOf(tags.close) !== -1) {
-          parts = parseInterpolationMarkup(attr.value, compileExpresssion, compileText);
+          parts = parseInterpolationMarkup(attr.value, compileExpresssion, compileString);
           bindingValue = parts.join('+');
-        } else if (bindingHandlers[attr.name]) {
+        } else if (bindingHandlers[bindingName] || bindingSyntax[bindingName]) {
           bindingValue = isObjectDeclaration(attr.value) ? attr.value : compileFilters(attr.value);
         }
 
         if (bindingValue) {
-          applyBindingTo(node, { name: attr.name, value: bindingValue });
+          applyBindingTo(node, { name: bindingName, value: bindingValue });
           node.removeAttributeNode(attr);
         }
       }
@@ -249,6 +297,10 @@
 
       if (options.compileFilter) {
         compileTextFilter = options.compileFilter;
+      }
+
+      if (options.unclosedBindings) {
+        unclosedBindings = unclosedBindings.concat();
       }
 
       return this;

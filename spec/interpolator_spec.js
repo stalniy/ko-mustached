@@ -9,7 +9,7 @@ describe('Syntax interpolator', function () {
     }).toThrow();
   })
 
-  describe('when process text', function () {
+  context('when process text', function () {
 
     it ('does nothing if there is no expressions in specified string', function () {
       var html = configureInterpolator().compile('no expressions');
@@ -68,7 +68,7 @@ describe('Syntax interpolator', function () {
     })
   })
 
-  describe('when process attributes', function () {
+  context('when process attributes', function () {
     it ('compiles them into bindings if such are exists', function () {
       var html = configureInterpolator().compile('<div if="hasItems()">There 5 items</div>');
 
@@ -143,6 +143,50 @@ describe('Syntax interpolator', function () {
       var html = configureInterpolator().compile('<div template="name: title | upper, data: test"></div>');
 
       expect(html).toEqual('<div data-bind="\'template\':{name: title | upper, data: test}"></div>');
+    })
+  })
+
+  describe('Default binding syntax', function () {
+    it ('compiles binding value into object if string starts from key/value pair', function () {
+      var html = configureInterpolator().compile('<div css="blue: isOpened, active: isActive()"></div>');
+
+      expect(html).toEqual('<div data-bind="\'css\':{blue: isOpened, active: isActive()}"></div>');
+    })
+
+    it ('leaves binding value as is if string does not starts from key/value pair', function () {
+      var html = configureInterpolator().compile('<a click="openWindow, clickBubble: false"></a>');
+
+      expect(html).toEqual('<a data-bind="\'click\':openWindow, clickBubble: false"></a>');
+    })
+
+    it ('has custom syntax for "foreach" binding', function () {
+      var html = configureInterpolator().compile('<div foreach="template in templates"></div>');
+
+      expect(html).toEqual('<div data-bind="\'foreach\':{data:templates,as:\'template\'}"></div>');
+    })
+
+    it ('has "partial" binding as alias for "template"', function () {
+      var html = configureInterpolator().compile('{{ partial: template, value: 1, data: 3 }}');
+
+      expect(html).toEqual('<!--ko template:{name:template,data:{value: 1, data: 3}}--><!--/ko-->');
+    })
+
+    it ('supports creation of binding aliases', function () {
+      interpolator.bindingSyntax.testAlias = { as: 'text' };
+      var html = configureInterpolator().compile('<div test-alias="item"></div>');
+
+      expect(html).toEqual('<div data-bind="\'text\':item"></div>');
+
+      delete interpolator.bindingSyntax.testAlias;
+    })
+
+    it ('supports auto closing for virtual bindings', function () {
+      interpolator.bindingSyntax.custom = { autoClose: true };
+      var html = configureInterpolator().compile('{{ custom: binding }}');
+
+      expect(html).toEqual('<!--ko custom:binding--><!--/ko-->');
+
+      delete interpolator.bindingSyntax.custom;
     })
   })
 
