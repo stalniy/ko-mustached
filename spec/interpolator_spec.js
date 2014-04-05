@@ -30,7 +30,7 @@ describe('Syntax interpolator', function () {
       expect(html).toEqual(expr);
     })
 
-    it ('does not parse unopened binding', function () {
+    it ('does not parse unopened expressions', function () {
       var expr = 'some }} text';
       var html = configureInterpolator().compile(expr);
 
@@ -133,7 +133,7 @@ describe('Syntax interpolator', function () {
       expect(html).toEqual('<div data-bind="\'template\':{name:\'test\',data:{item: 1, data: 2}}"></div>');
     })
 
-    it ('compiles filters inside binding values', function () {
+    it ('compiles filters inside binding value', function () {
       var html = configureInterpolator().compile('<div hint="title | upper"></div>');
 
       expect(html).toEqual('<div data-bind="\'hint\':upper(title)"></div>');
@@ -165,7 +165,7 @@ describe('Syntax interpolator', function () {
       expect(html).toEqual('<div data-bind="\'foreach\':{data:templates,as:\'template\'}"></div>');
     })
 
-    it ('has "partial" binding as alias for "template"', function () {
+    it ('has "partial" binding as an alias for "template"', function () {
       var html = configureInterpolator().compile('{{ partial: template, value: 1, data: 3 }}');
 
       expect(html).toEqual('<!--ko template:{name:template,data:{value: 1, data: 3}}--><!--/ko-->');
