@@ -41,7 +41,7 @@
     foreach: function (bindingValue) {
       var parts = bindingValue.split(/\s+in\s+/);
 
-      return parts.length > 1 ? [ '{data:', parts[1], ',as:\'', parts[0].trim(), '\'}' ].join('') : bindingValue;
+      return parts.length > 1 ? [ '{data:', parts[1].trim(), ',as:\'', parts[0].trim(), '\'}' ].join('') : bindingValue;
     },
 
     'default': function (bindingValue) {
@@ -135,7 +135,10 @@
       } else {
         sections.push(expressionText);
       }
-    } else if (expressionText.trim() === '/end' && sections.length > 0) {
+    } else if (expressionText.trim() === '/end') {
+      if (sections.length === 0) {
+        throw new Error('Unexpected close tag');
+      }
       sections.pop();
       compiledElements.push(document.createComment("/ko"));
     } else {
@@ -308,10 +311,6 @@
 
       if (options.compileFilter) {
         compileTextFilter = options.compileFilter;
-      }
-
-      if (options.unclosedBindings) {
-        unclosedBindings = unclosedBindings.concat();
       }
 
       return this;

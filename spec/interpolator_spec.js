@@ -11,6 +11,18 @@ describe('Syntax interpolator', function () {
 
   context('when process text', function () {
 
+    it ('throws exception if found unexpected close tag', function () {
+      expect(function () {
+        configureInterpolator().compile('no expressions {{ /end }}');
+      }).toThrow();
+    })
+
+    it ('throws exception if found unclosed section', function () {
+      expect(function () {
+        configureInterpolator().compile('{{ foreach: template in templates }}test');
+      }).toThrow();
+    })
+
     it ('does nothing if there is no expressions in specified string', function () {
       var html = configureInterpolator().compile('no expressions');
 

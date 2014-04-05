@@ -1,13 +1,13 @@
 {
-  "name": "Knockout mustached interpolator",
-  "version": "0.0.2",
-  "description": "Knockout interpolation syntax",
+  "name": "ko-mustached",
+  "version": "0.1.0",
+  "description": "Mustached syntax for knockout data bindings ",
   "scripts": {
     "test": "grunt test"
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:stalniy/knockout-interpolation-syntax.git"
+    "url": "git@github.com:stalniy/ko-mustached.git"
   },
   "keywords": [
     "knockout",
@@ -16,17 +16,16 @@
     "interpolation",
     "syntax"
   ],
-  "author": "Sergiy Stotskiy",
+  "author": "Sergii Stotskiy",
   "license": "MIT",
   "readmeFilename": "README",
   "bugs": {
-    "url": "https://github.com/stalniy/knockout-interpolation-syntax/issues"
+    "url": "https://github.com/stalniy/ko-mustached/issues"
   },
   "devDependencies": {
     "grunt": "~0.4.1",
     "grunt-contrib-jasmine": "~0.5.1",
     "grunt-contrib-uglify": "~0.2.4",
-    "grunt-bower-task": "~0.3.2",
-    "jsdom": "~0.8.11"
+    "grunt-bower-task": "~0.3.2"
   }
 }
