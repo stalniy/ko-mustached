@@ -46,14 +46,14 @@ This example is compiled to:
 ```html
 <div data-bind="'if':hasTemplates()">
   <!--ko foreach:{data:templates ,as:'template'}-->
-    <a href="#" id="test" data-bind="attr:{'dataId':'id-'+dasherize(u(id)),'title':upper(u(title))}">
+    <a href="#" id="test" data-bind="attr:{'data-id':'id-'+dasherize(u(id)),'title':upper(u(title))}">
       <!--ko text:upper(name)--><!--/ko-->
     </a>
     <input type="text" data-bind="'css':{active: isActive, disabled: isLocked}, 'value':title, valueUpdate: 'afterkeydown'" />
   <!--/ko-->
 </div>
 ```
-"u" filter is ko.unwrap.
+**Note**: "u" filter is ko.unwrap.
 
 ### Configuration options
 Mustached interpolator has few configuration options:
@@ -71,7 +71,7 @@ mustached.interpolator.configure({
   }
 })
 ```
-So, then `{{ title | upper }}` will be compiled to `<!--ko text:ko.filters['upper']--><!--/ko-->`
+So, then `{{ title | upper }}` will be compiled to `<!--ko text:ko.filters['upper'](title)--><!--/ko-->`
 
 ## How to use with AMD
 

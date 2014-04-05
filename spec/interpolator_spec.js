@@ -109,9 +109,9 @@ describe('Syntax interpolator', function () {
     })
 
     it ('compiles attributes into "attr" binding', function () {
-      var html = configureInterpolator().compile('<div id="{{ id }}" title="{{ title }}" class="css"></div>');
+      var html = configureInterpolator().compile('<div id="{{ id }}" data-title="{{ title }}" class="css"></div>');
 
-      expect(html).toEqual('<div class="css" data-bind="attr:{\'id\':u(id),\'title\':u(title)}"></div>');
+      expect(html).toEqual('<div class="css" data-bind="attr:{\'id\':u(id),\'data-title\':u(title)}"></div>');
     })
 
     it ('compiles attributes which have several expressions', function () {

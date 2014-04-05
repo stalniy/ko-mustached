@@ -193,7 +193,7 @@
   }
 
   function parseInterpolationInAttributesOf(node) {
-    var parts, bindingValue, bindingName;
+    var parts, bindingValue, bindingName, isBindingExists;
     var compileExpresssion = function (expressionText) {
       expressionText = expressionText.split('|');
       expressionText[0] = expressionText[0] + ' | u';
@@ -207,13 +207,18 @@
 
       if (attr.specified && attr.name != dataBind && attr.value) {
         bindingValue = '';
-        bindingName = camelize(attr.name);
+        bindingName = attr.name;
 
         if (attr.value.indexOf(tags.open) !== -1 && attr.value.indexOf(tags.close) !== -1) {
           parts = parseInterpolationMarkup(attr.value, compileExpresssion, compileString);
           bindingValue = parts.join('+');
-        } else if (bindingHandlers[bindingName] || bindingSyntax[bindingName]) {
-          bindingValue = isObjectDeclaration(attr.value) ? attr.value : compileFilters(attr.value);
+        } else {
+          var possibleBindingName = camelize(attr.name);
+
+          if (bindingHandlers[possibleBindingName] || bindingSyntax[possibleBindingName]) {
+            bindingName = possibleBindingName;
+            bindingValue = isObjectDeclaration(attr.value) ? attr.value : compileFilters(attr.value);
+          }
         }
 
         if (bindingValue) {
