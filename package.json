@@ -1,6 +1,6 @@
 {
   "name": "ko-mustached",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Mustached syntax for knockout data bindings ",
   "scripts": {
     "test": "grunt test"
@@ -27,5 +27,8 @@
     "grunt-contrib-jasmine": "~0.5.1",
     "grunt-contrib-uglify": "~0.2.4",
     "grunt-bower-task": "~0.3.2"
+  },
+  "dependencies": {
+    "jsdom": "0.10.x"
   }
 }

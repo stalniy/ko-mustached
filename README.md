@@ -108,7 +108,48 @@ require(['knockout', 'path/to/view/model', 'kom!path/to/template.html'], functio
 ```
 
 ## What about production?
-TODO: write something about grunt task =)
+You can precompile your mustached templates using grunt task:
+```js
+grunt.initConfig({
+  'ko-mustached': {
+    options: {
+      bindings: [
+        "attr",
+        "checked",
+        "checkedValue",
+        "css",
+        "enable",
+        "disable",
+        "event",
+        "foreach",
+        "hasfocus",
+        "hasFocus",
+        "html",
+        "if",
+        "ifnot",
+        "with",
+        "options",
+        "selectedOptions",
+        "style",
+        "submit",
+        "text",
+        "uniqueName",
+        "value",
+        "visible",
+        "click",
+        "template"
+      ]
+    },
+
+    templates: {
+      src: [ 'src/templates/mustached.html', 'src/templates/another-mustached.html' ],
+      dest: 'build/templates'
+    }
+  }
+});
+```
+In case you want to override source files you can specify `override: true`.
+The easiest way to get the bindings list is to open your application and run in js console `Object.keys(ko.bindingHandlers)`.
 
 ## License
 
