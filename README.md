@@ -1,7 +1,7 @@
 Knockout Mustached Syntax
 =============================
 
-This library provides a tool which can compile mustached interpolation syntax into knockout binding declarations.
+This library provides a tool which compiles mustached interpolation syntax into knockout binding declarations.
 
 ## Installation
 Using npm: `npm install ko-mustached`
@@ -25,6 +25,7 @@ The goal is to simplify knockout templates.
 It is just a compiler and works only with strings, it knows nothing about your view models and another js code, but it **can**:
 * compiles string with mustached expressions into knockout virtual bindings
 * compiles DOM node attributes into bindings if such exists
+* compiles all DOM node attributes which start with **ko-** into bindings
 * compiles attributes which contains mustached expressions into knockout `attr` binding
 * allows to apply text filters
 * allows to define custom syntax for bindings
@@ -35,12 +36,12 @@ It is just a compiler and works only with strings, it knows nothing about your v
 
 ### Example
 ```html
-  <div if="hasTemplates()">
-    {{ foreach: template in templates }}
-      <a href="#" data-id="id-{{ id | dasherize }}" id="test" title="{{ title | upper }}">{{ name | upper }}</a>
-      <input value="title, valueUpdate: 'afterkeydown'" css="active: isActive, disabled: isLocked" />
-    {{ /end }}
-  </div>
+<div if="hasTemplates()">
+  {{ foreach: template in templates }}
+    <a href="#" data-id="id-{{ id | dasherize }}" id="test" title="{{ title | upper }}">{{ name | upper }}</a>
+    <input value="title, valueUpdate: 'afterkeydown'" css="active: isActive, disabled: isLocked" />
+  {{ /end }}
+</div>
 ```
 This example is compiled to:
 ```html
@@ -108,7 +109,12 @@ require(['knockout', 'path/to/view/model', 'kom!path/to/template.html'], functio
 ```
 
 ## What about production?
-You can precompile your mustached templates using grunt task:
+You can precompile your mustached templates using grunt task.
+If you use non-prefixed attributes for bindings (which names don't start with "ko-") you need to specify all available bindings, otherwise they wll be skipped or compiled as part of `attr` binding.
+The easiest way to get the bindings list is to open your application and run in js console `Object.keys(ko.bindingHandlers)`.
+
+Example of grunt task:
+
 ```js
 grunt.initConfig({
   'ko-mustached': {
@@ -148,8 +154,7 @@ grunt.initConfig({
   }
 });
 ```
-In case you want to override source files you can specify `override: true`.
-The easiest way to get the bindings list is to open your application and run in js console `Object.keys(ko.bindingHandlers)`.
+In case if you want to override source files you can specify `override: true`. It's useful if you copy mustached templates into temporary folder.
 
 ## License
 

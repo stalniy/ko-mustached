@@ -1,4 +1,5 @@
 describe('Syntax interpolator', function () {
+  var interpolator = window.mustached.interpolator;
   ko.bindingHandlers.hint = {};
 
   it ('throws exception if not configured', function () {
@@ -155,6 +156,12 @@ describe('Syntax interpolator', function () {
       var html = configureInterpolator().compile('<div template="name: title | upper, data: test"></div>');
 
       expect(html).toEqual('<div data-bind="\'template\':{name: title | upper, data: test}"></div>');
+    })
+
+    it ('compiles attributes with prefix "ko-" into bindings', function () {
+      var html = configureInterpolator().compile('<div ko-template="name: title, data: test"></div>');
+
+      expect(html).toEqual('<div data-bind="\'template\':{name: title, data: test}"></div>');
     })
   })
 

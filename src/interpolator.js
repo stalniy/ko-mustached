@@ -7,7 +7,7 @@
     define(["exports"], factory);
   //normal script tag
   } else {
-    factory(window);
+    factory(window.mustached = {});
   }
 })(function (context) {
   var dataBind = 'data-bind';
@@ -121,11 +121,11 @@
   }
 
   function compileExpresssion(expressionText) {
-    var matching = expressionText.match(/^\s*(\w+)\s*:(.+)/);
+    var matching = expressionText.match(/^\s*([\w_-]+)\s*:(.+)$/);
     var possibleBindingName = matching && matching[1];
     var compiledElements = [];
 
-    if (possibleBindingName && (bindingHandlers[possibleBindingName] || bindingSyntax[possibleBindingName])) {
+    if (possibleBindingName) {
       var binding = buildBinding(possibleBindingName, matching[2]);
 
       compiledElements.push(document.createComment("ko " + binding.name + ":" + binding.value));
@@ -158,6 +158,15 @@
   function compileString(text) {
     return "'" + text.replace(/"/g, "\\'") + "'";
   }
+
+  function compileAttributeExpresssion(expressionText) {
+    expressionText = expressionText.split('|');
+    expressionText[0] = expressionText[0] + ' | u';
+    expressionText = expressionText.join('|');
+
+    return compileFilters(expressionText);
+  }
+
 
   function buildBinding(name, valueExpr) {
     var compile = bindingSyntax['default'];
@@ -193,36 +202,35 @@
   }
 
   function parseInterpolationInAttributesOf(node) {
-    var parts, bindingValue, bindingName, isBindingExists;
-    var compileExpresssion = function (expressionText) {
-      expressionText = expressionText.split('|');
-      expressionText[0] = expressionText[0] + ' | u';
-      expressionText = expressionText.join('|');
-
-      return compileFilters(expressionText);
-    };
+    var parts, bindingValue, bindingName, isBinding, possibleBindingName;
 
     for (var attrs = node.attributes, i = attrs.length - 1; i >= 0; --i) {
       var attr = attrs[i];
 
-      if (attr.specified && attr.name != dataBind && attr.value) {
+      if (attr.specified && attr.name !== dataBind && attr.value) {
         bindingValue = '';
         bindingName = attr.name;
+        isBinding = bindingName.indexOf('ko-') !== -1;
 
-        if (attr.value.indexOf(tags.open) !== -1 && attr.value.indexOf(tags.close) !== -1) {
-          parts = parseInterpolationMarkup(attr.value, compileExpresssion, compileString);
+        if (isBinding) {
+          bindingName = bindingName.substr(3);
+        }
+
+        if (!isBinding && attr.value.indexOf(tags.open) !== -1 && attr.value.indexOf(tags.close) !== -1) {
+          parts = parseInterpolationMarkup(attr.value, compileAttributeExpresssion, compileString);
           bindingValue = parts.join('+');
         } else {
-          var possibleBindingName = camelize(attr.name);
+          possibleBindingName = camelize(bindingName);
 
-          if (bindingHandlers[possibleBindingName] || bindingSyntax[possibleBindingName]) {
+          if (isBinding || bindingHandlers[possibleBindingName] || bindingSyntax[possibleBindingName]) {
+            isBinding = true;
             bindingName = possibleBindingName;
             bindingValue = isObjectDeclaration(attr.value) ? attr.value : compileFilters(attr.value);
           }
         }
 
         if (bindingValue) {
-          applyBindingTo(node, { name: bindingName, value: bindingValue });
+          applyBindingTo(node, { name: bindingName, value: bindingValue, exists: isBinding });
           node.removeAttributeNode(attr);
         }
       }
@@ -232,12 +240,13 @@
   function applyBindingTo(element, binding) {
     var dataBindAttribute = element.getAttribute(dataBind);
     var attrBindingPosition = null;
+    var isBinding = binding.exists;
 
     binding = buildBinding(binding.name, binding.value);
 
     var bindingExpr = "'" + binding.name + "':" + binding.value;
 
-    if (!bindingHandlers[binding.name]) {
+    if (!isBinding) {
       attrBindingPosition = dataBindAttribute ? dataBindAttribute.search(/attr\s*:\s*\{/) : -1;
 
       if (attrBindingPosition === -1) {
@@ -322,10 +331,10 @@
     },
 
     compile: function (html) {
-      if (!document || !bindingHandlers || !compileTextFilter) {
+      if (!document || !compileTextFilter) {
         throw new Error([
           'Unable to compile html because of ',
-          'one or more empty options "document", "bindingHandlers" or "compileFilter".'
+          'one or more empty options "document", or "compileFilter".'
         ].join(''));
       }
 
