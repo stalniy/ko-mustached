@@ -1,10 +1,10 @@
 (function (factory) {
   //CommonJS
-  if (typeof require === "function" && typeof exports === "object" && typeof module === "object") {
+  if (typeof require === 'function' && typeof exports === 'object' && typeof module === 'object') {
     factory(module.exports);
   //AMD
-  } else if (typeof define === "function" && define.amd) {
-    define(["exports"], factory);
+  } else if (typeof define === 'function' && define.amd) {
+    define(['exports'], factory);
   //normal script tag
   } else {
     factory(window.mustached = {});
@@ -75,9 +75,7 @@
   function compileSingle(element) {
     if (element.nodeType === 3 && element.nodeValue) {
       parseInterpolationMarkupIn(element);
-    }
-
-    if (element.nodeType === 1 && element.attributes.length > 0) {
+    } else if (element.nodeType === 1 && element.attributes.length > 0) {
       parseInterpolationInAttributesOf(element);
     }
   }
@@ -94,7 +92,9 @@
   }
 
   function parseInterpolationMarkup(text, compileExpression, compileText) {
-    var startIndex, endIndex, index = 0, length = text.length, expr;
+    var startIndex, endIndex, expr;
+    var index = 0;
+    var length = text.length;
     var parts = [];
 
     while (index < length) {
@@ -121,30 +121,33 @@
   }
 
   function compileExpresssion(expressionText) {
-    var matching = expressionText.match(/^\s*([\w_-]+)\s*:(.+)$/);
-    var possibleBindingName = matching && matching[1];
+    expressionText = expressionText.trim();
+
     var compiledElements = [];
+    var matching = expressionText.match(/^(?:#([\w_-]+)\s+|([\w_-]+)\s*:)(.+)$/) || [];
+    var possibleBindingName = matching[1] || matching[2];
+    var closeComment = document.createComment('/ko');
 
     if (possibleBindingName) {
-      var binding = buildBinding(possibleBindingName, matching[2]);
+      var binding = buildBinding(possibleBindingName, matching[3]);
 
-      compiledElements.push(document.createComment("ko " + binding.name + ":" + binding.value));
+      compiledElements.push(document.createComment('ko ' + binding.name + ':' + binding.value));
 
       if (binding.autoClose) {
-        compiledElements.push(document.createComment("/ko"));
+        compiledElements.push(closeComment);
       } else {
         sections.push(expressionText);
       }
-    } else if (expressionText.trim() === '/end') {
+    } else if (expressionText === '/end') {
       if (sections.length === 0) {
         throw new Error('Unexpected close tag');
       }
       sections.pop();
-      compiledElements.push(document.createComment("/ko"));
+      compiledElements.push(closeComment);
     } else {
       compiledElements.push(
-        document.createComment("ko text:" + compileFilters(expressionText).trim()),
-        document.createComment("/ko")
+        document.createComment('ko text:' + compileFilters(expressionText)),
+        closeComment
       );
     }
 
@@ -160,9 +163,13 @@
   }
 
   function compileAttributeExpresssion(expressionText) {
-    expressionText = expressionText.split('|');
-    expressionText[0] = expressionText[0] + ' | u';
-    expressionText = expressionText.join('|');
+    var position = expressionText.indexOf('|');
+
+    if (position !== -1) {
+      expressionText = expressionText.substr(0, position) + '|u' + expressionText.substr(position);
+    } else {
+      expressionText += '|u';
+    }
 
     return compileFilters(expressionText);
   }
@@ -196,7 +203,7 @@
       binding.value = result.value;
     }
 
-    binding.value = binding.value.trim();
+    binding.value = compileFilters(binding.value.trim());
 
     return binding;
   }
@@ -225,7 +232,7 @@
           if (isBinding || bindingHandlers[possibleBindingName] || bindingSyntax[possibleBindingName]) {
             isBinding = true;
             bindingName = possibleBindingName;
-            bindingValue = isObjectDeclaration(attr.value) ? attr.value : compileFilters(attr.value);
+            bindingValue = attr.value;
           }
         }
 
@@ -277,39 +284,48 @@
     }
 
     // Split the input into tokens, in which | and : are individual tokens, quoted strings are ignored, and all tokens are space-trimmed
-    var tokens = input.match(/"([^"\\]|\\.)*"|'([^'\\]|\\.)*'|\|\||[|:]|[^\s|:"'][^|:"']*[^\s|:"']|[^\s|:"']/g);
+    var tokens = input.match(/"([^"\\]|\\.)*"|'([^'\\]|\\.)*'|\|\||[|:]|[$\w_-]+|[^\s|:"']/g);
     if (tokens && tokens.length > 1) {
       // Append a line so that we don't need a separate code block to deal with the last item
-      tokens.push('|');
-      input = tokens[0];
-      var lastToken, token, inFilters = false, nextIsFilter = false;
-      for (var i = 1, token; token = tokens[i]; ++i) {
-        if (token === '|') {
+      tokens.push(' ');
+      input = '';
+
+      var buffer = '';
+      var inFilters = false;
+      for (var i = 0, token; token = tokens[i]; ++i) {
+        if (token === '|' && i !== tokens.length - 1) {
           if (inFilters) {
-            if (lastToken === ':') {
-              input += "undefined";
-            }
-            input += ')';
-          }
-          nextIsFilter = true;
-          inFilters = true;
-        } else {
-          if (nextIsFilter) {
-            input = compileTextFilter(token) + "(" + input;
-          } else if (inFilters && token === ':') {
-            if (lastToken === ':') {
-              input += "undefined";
-            }
-            input += ",";
+            buffer += ')';
           } else {
-            input += token;
+            buffer = tokens[i - 1] || '';
           }
-          nextIsFilter = false;
+
+          inFilters = true;
+        } else if (tokens[i - 1] === '|') {
+          buffer = compileTextFilter(token) + '(' + buffer;
+        } else if (inFilters && token === ':') {
+          var k = i;
+
+          do {
+            if (tokens[k + 1] === ':') {
+              buffer += ',null';
+            } else {
+              buffer += ',' + tokens[++k];
+            }
+          } while(tokens[++k] === ':');
+
+          i = k - 1;
+        } else if (inFilters) {
+          inFilters = false;
+          input += buffer + ')' + token;
+          buffer = '';
+        } else if (tokens[i + 1] !== '|') {
+          input += token;
         }
-        lastToken = token;
       }
     }
-    return input;
+
+    return input.trim();
   }
 
   var compileTextFilter = function (filterName) {
@@ -352,7 +368,7 @@
       html = compileTree(holder);
 
       if (sections.length !== 0) {
-        throw new Error("Unclosed section: " + sections.pop());
+        throw new Error('Unclosed section: ' + sections.pop());
       }
 
       holder.innerHTML = '';

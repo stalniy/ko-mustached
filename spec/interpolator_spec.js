@@ -77,7 +77,13 @@ describe('Syntax interpolator', function () {
     it ('compiles bindings inside interpolation syntax', function () {
       var html = configureInterpolator().compile('{{ if: hasItems() }}test me{{ /end }}');
 
-      expect(html).toEqual('<!--ko if:hasItems()-->test me<!--/ko-->')
+      expect(html).toEqual('<!--ko if:hasItems()-->test me<!--/ko-->');
+    })
+
+    it ('compiles expressions which starts with "#" into bindings', function () {
+      var html = configureInterpolator().compile('{{ #if hasItems() }} yes {{ /end }}');
+
+      expect(html).toEqual('<!--ko if:hasItems()--> yes <!--/ko-->');
     })
   })
 
@@ -152,16 +158,36 @@ describe('Syntax interpolator', function () {
       expect(html).toEqual('<div data-bind="\'hint\':upper(title)"></div>');
     })
 
-    it ('does not compile filters if binding definition looks like object literal', function () {
-      var html = configureInterpolator().compile('<div template="name: title | upper, data: test"></div>');
-
-      expect(html).toEqual('<div data-bind="\'template\':{name: title | upper, data: test}"></div>');
-    })
-
     it ('compiles attributes with prefix "ko-" into bindings', function () {
       var html = configureInterpolator().compile('<div ko-template="name: title, data: test"></div>');
 
       expect(html).toEqual('<div data-bind="\'template\':{name: title, data: test}"></div>');
+    })
+
+    describe('when attribute contains filters applied along with object literals', function () {
+      it ('correctly compiles filters at the begining of a binding declaration', function () {
+        var html = configureInterpolator().compile('<div template="name: $class | demodulize, foreach: items"></div>');
+
+        expect(html).toEqual('<div data-bind="\'template\':{name:demodulize($class),foreach:items}"></div>');
+      })
+
+      it ('correctly compiles filters at the end of a binding declaration', function () {
+        var html = configureInterpolator().compile('<div template="name: $class, foreach: items | sort"></div>');
+
+        expect(html).toEqual('<div data-bind="\'template\':{name:$class,foreach:sort(items)}"></div>');
+      })
+
+      it ('correctly compiles filters in the middle of a binding declaration', function () {
+        var html = configureInterpolator().compile('<div template="name: $class, foreach: items | sort, as: \'item\'"></div>');
+
+        expect(html).toEqual('<div data-bind="\'template\':{name:$class,foreach:sort(items),as:\'item\'}"></div>');
+      })
+
+      it ('correctly compiles filters with arguments', function () {
+        var html = configureInterpolator().compile('<div template="name: $class, foreach: items | sortBy: \'name\': \'asc\', as: \'item\', if: user | cast: \'bool\'"></div>');
+
+        expect(html).toEqual('<div data-bind="\'template\':{name:$class,foreach:sortBy(items,\'name\',\'asc\'),as:\'item\',if:cast(user,\'bool\')}"></div>');
+      })
     })
   })
 
