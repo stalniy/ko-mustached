@@ -33,6 +33,7 @@ It is just a compiler and works only with strings, it knows nothing about your v
 * automatically close specified virtual bindings (by default "partial" and "template" bindings)
 * provides "partial" alias of "template" binding but with more freandly syntax (`{{ partial: templateName, param: 1, param2: 2 }}`)
 * provides custom syntax for "foreach" binding (`{{ foreach: template in templates }} {{ template.name }} {{ /end }}`)
+* provides to ways to use bindings as virtual elements: virtual elements which starts with "#" and those which has colon next to its name are perceived as bindings
 
 ### Example
 ```html
@@ -55,6 +56,19 @@ This example is compiled to:
 </div>
 ```
 **Note**: "u" filter is ko.unwrap.
+
+And
+```html
+{{ #if canEdit() }}
+  <a href="#" ko-click="editItem">Edit</a>
+{{ /end }}
+```
+is compiled to
+```html
+<!--ko if: canEdit()-->
+  <a href="#" data-bind="click: editItem">Edit</a>
+<!--/ko-->
+```
 
 ### Configuration options
 Mustached interpolator has few configuration options:
